@@ -5,7 +5,7 @@
 // network, no clock, no randomness. The program validates the text is
 // 1–280 Unicode code points (the bounty limit) before writing, then
 // reads the output back and compares it with the source string.
-import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 
 const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
@@ -36,8 +36,13 @@ writeFileSync(outPath, text, 'utf8');
 
 // Read the output back and verify it byte-for-byte: same text and same
 // UTF-8 byte length, so no encoding or newline translation slipped in.
+// Also check the file's size on disk matches, so a partial write or a
+// filesystem quirk cannot pass silently.
 const back = readFileSync(outPath, 'utf8');
 if (back !== text || Buffer.byteLength(back, 'utf8') !== Buffer.byteLength(text, 'utf8')) {
   throw new Error('entry.txt read-back mismatch');
+}
+if (statSync(outPath).size !== Buffer.byteLength(text, 'utf8')) {
+  throw new Error('entry.txt size on disk does not match the text');
 }
 console.log(`wrote ${outPath} (${codePoints} code points, ${lines.length} lines)`);
